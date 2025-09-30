@@ -11,7 +11,7 @@ function BasicApp() {
   const [upperThreshold, setUpperThreshold] = useState(0.5);
   const [lowerThreshold, setLowerThreshold] = useState(-0.5);
   const [detectedSpikes, setDetectedSpikes] = useState<Array<{time: number, amplitude: number}>>([]);
-  const [measurements, setMeasurements] = useState<{maxAmplitude: number, minAmplitude: number, period: number, frequency: number} | null>(null);
+  const [measurements, setMeasurements] = useState<{maxAmplitude: number, minAmplitude: number, period: number, frequency: number, rms: number} | null>(null);
   const [loadedFile, setLoadedFile] = useState<{name: string, data: Float32Array} | null>(null);
   const [playbackPosition, setPlaybackPosition] = useState(0);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
@@ -233,11 +233,14 @@ function BasicApp() {
           // Calculate measurements
           let maxAmp = -Infinity;
           let minAmp = Infinity;
+          let sumSquares = 0;
           const peaks: number[] = [];
 
           for (let i = 0; i < loadedFile.data.length; i++) {
-            if (loadedFile.data[i] > maxAmp) maxAmp = loadedFile.data[i];
-            if (loadedFile.data[i] < minAmp) minAmp = loadedFile.data[i];
+            const value = loadedFile.data[i];
+            if (value > maxAmp) maxAmp = value;
+            if (value < minAmp) minAmp = value;
+            sumSquares += value * value;
 
             // Find peaks (local maxima above threshold)
             if (i > 0 && i < loadedFile.data.length - 1) {
@@ -248,6 +251,9 @@ function BasicApp() {
               }
             }
           }
+
+          // Calculate RMS (Root Mean Square) - important for signal power measurement
+          const rms = Math.sqrt(sumSquares / loadedFile.data.length);
 
           // Calculate average period from peaks
           let avgPeriod = 0;
@@ -263,55 +269,60 @@ function BasicApp() {
             frequency = avgPeriod > 0 ? 1 / avgPeriod : 0;
           }
 
-          // Draw loaded file waveform - Smooth anti-aliased with cubic interpolation
+          // Draw loaded file waveform - Min-Max downsampling for accurate amplitude representation
           ctx.strokeStyle = '#00FF00';
           ctx.lineWidth = 1.5;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
-          ctx.beginPath();
 
           const samplesPerPixel = Math.max(1, Math.floor(loadedFile.data.length / canvas.width));
           const startSample = Math.floor(playbackPosition * loadedFile.data.length);
 
-          // Build smoothed points array with averaging
-          const points: Array<{x: number, y: number}> = [];
-          for (let x = 0; x < canvas.width; x++) {
-            const sampleIndex = startSample + x * samplesPerPixel;
-            if (sampleIndex < loadedFile.data.length) {
-              // Multi-sample averaging with wider window for smoother result
-              let sum = 0;
-              let count = 0;
-              const windowSize = Math.max(1, Math.floor(samplesPerPixel * 1.5));
-              for (let s = 0; s < windowSize && sampleIndex + s < loadedFile.data.length; s++) {
-                sum += loadedFile.data[sampleIndex + s];
-                count++;
+          // Use min-max downsampling to preserve amplitude envelope
+          // This is critical for accurate neuroscience measurements
+          if (samplesPerPixel > 1) {
+            // When zoomed out, show min-max envelope
+            ctx.beginPath();
+            for (let x = 0; x < canvas.width; x++) {
+              const sampleIndex = startSample + x * samplesPerPixel;
+              if (sampleIndex < loadedFile.data.length) {
+                let min = Infinity;
+                let max = -Infinity;
+
+                // Find min and max in this pixel's sample range
+                for (let s = 0; s < samplesPerPixel && sampleIndex + s < loadedFile.data.length; s++) {
+                  const value = loadedFile.data[sampleIndex + s];
+                  if (value < min) min = value;
+                  if (value > max) max = value;
+                }
+
+                // Draw vertical line from min to max
+                const yMin = canvas.height / 2 - min * canvas.height * 0.4;
+                const yMax = canvas.height / 2 - max * canvas.height * 0.4;
+
+                ctx.moveTo(x, yMin);
+                ctx.lineTo(x, yMax);
               }
-              const avgValue = count > 0 ? sum / count : 0;
-              const y = canvas.height / 2 - avgValue * canvas.height * 0.4;
-              points.push({x, y});
             }
-          }
+            ctx.stroke();
+          } else {
+            // When zoomed in, draw actual samples
+            ctx.beginPath();
+            for (let x = 0; x < canvas.width; x++) {
+              const sampleIndex = startSample + Math.floor(x * samplesPerPixel);
+              if (sampleIndex < loadedFile.data.length) {
+                const value = loadedFile.data[sampleIndex];
+                const y = canvas.height / 2 - value * canvas.height * 0.4;
 
-          // Draw using cubic bezier curves for ultra-smooth lines
-          if (points.length > 0) {
-            ctx.moveTo(points[0].x, points[0].y);
-
-            for (let i = 0; i < points.length - 1; i++) {
-              const p0 = points[Math.max(0, i - 1)];
-              const p1 = points[i];
-              const p2 = points[i + 1];
-              const p3 = points[Math.min(points.length - 1, i + 2)];
-
-              // Calculate control points for smooth cubic bezier
-              const cp1x = p1.x + (p2.x - p0.x) / 6;
-              const cp1y = p1.y + (p2.y - p0.y) / 6;
-              const cp2x = p2.x - (p3.x - p1.x) / 6;
-              const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-              ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+                if (x === 0) {
+                  ctx.moveTo(x, y);
+                } else {
+                  ctx.lineTo(x, y);
+                }
+              }
             }
+            ctx.stroke();
           }
-          ctx.stroke();
 
           // Update measurements
           if (!measurements || measurements.maxAmplitude !== maxAmp) {
@@ -319,7 +330,8 @@ function BasicApp() {
               maxAmplitude: maxAmp,
               minAmplitude: minAmp,
               period: avgPeriod,
-              frequency: frequency
+              frequency: frequency,
+              rms: rms
             });
           }
 
@@ -337,53 +349,57 @@ function BasicApp() {
             }
           }
         } else if (audioInitialized && analyserRef.current) {
-          // Draw real audio data with cubic smoothing
+          // Draw real audio data using min-max for accurate amplitude
           analyserRef.current.getFloatTimeDomainData(audioDataRef.current);
 
-          // Channel 1 - Smooth anti-aliased with cubic interpolation
           ctx.strokeStyle = '#00FF00';
           ctx.lineWidth = 1.5;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
-          ctx.beginPath();
 
-          // Build points array with averaging
-          const audioPoints: Array<{x: number, y: number}> = [];
-          for (let x = 0; x < canvas.width; x++) {
-            const sampleIndex = Math.floor(x * audioDataRef.current.length / canvas.width);
-            // Average neighboring samples for smoother display
-            let sum = 0;
-            let count = 0;
-            const avgWindow = 3;
-            for (let s = -avgWindow; s <= avgWindow; s++) {
-              const idx = Math.max(0, Math.min(audioDataRef.current.length - 1, sampleIndex + s));
-              sum += audioDataRef.current[idx];
-              count++;
+          const samplesPerPixel = audioDataRef.current.length / canvas.width;
+
+          if (samplesPerPixel > 1) {
+            // Use min-max downsampling for accurate amplitude representation
+            ctx.beginPath();
+            for (let x = 0; x < canvas.width; x++) {
+              const startIdx = Math.floor(x * samplesPerPixel);
+              const endIdx = Math.floor((x + 1) * samplesPerPixel);
+
+              let min = Infinity;
+              let max = -Infinity;
+
+              for (let i = startIdx; i < endIdx && i < audioDataRef.current.length; i++) {
+                const value = audioDataRef.current[i];
+                if (value < min) min = value;
+                if (value > max) max = value;
+              }
+
+              const yMin = canvas.height / 2 - min * canvas.height * 0.4;
+              const yMax = canvas.height / 2 - max * canvas.height * 0.4;
+
+              ctx.moveTo(x, yMin);
+              ctx.lineTo(x, yMax);
             }
-            const avgValue = sum / count;
-            const y = canvas.height / 2 - avgValue * canvas.height * 0.4;
-            audioPoints.push({x, y});
-          }
+            ctx.stroke();
+          } else {
+            // Draw actual samples when zoomed in
+            ctx.beginPath();
+            for (let x = 0; x < canvas.width; x++) {
+              const idx = Math.floor(x * samplesPerPixel);
+              if (idx < audioDataRef.current.length) {
+                const value = audioDataRef.current[idx];
+                const y = canvas.height / 2 - value * canvas.height * 0.4;
 
-          // Draw using cubic bezier curves
-          if (audioPoints.length > 0) {
-            ctx.moveTo(audioPoints[0].x, audioPoints[0].y);
-
-            for (let i = 0; i < audioPoints.length - 1; i++) {
-              const p0 = audioPoints[Math.max(0, i - 1)];
-              const p1 = audioPoints[i];
-              const p2 = audioPoints[i + 1];
-              const p3 = audioPoints[Math.min(audioPoints.length - 1, i + 2)];
-
-              const cp1x = p1.x + (p2.x - p0.x) / 6;
-              const cp1y = p1.y + (p2.y - p0.y) / 6;
-              const cp2x = p2.x - (p3.x - p1.x) / 6;
-              const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-              ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+                if (x === 0) {
+                  ctx.moveTo(x, y);
+                } else {
+                  ctx.lineTo(x, y);
+                }
+              }
             }
+            ctx.stroke();
           }
-          ctx.stroke();
         } else {
           // Draw demo waveform
           ctx.strokeStyle = '#CCCC00';
@@ -450,7 +466,7 @@ function BasicApp() {
 
       // Define info box dimensions first (for adaptive positioning)
       const infoBoxWidth = Math.min(250, canvas.width - 20);
-      const infoBoxHeight = measurements ? 160 : 80;
+      const infoBoxHeight = measurements ? 180 : 80;
       const infoBoxX = 10;
       const infoBoxY = 10;
 
@@ -521,12 +537,13 @@ function BasicApp() {
           ctx.fillText(`Max: ${measurements.maxAmplitude.toFixed(4)}`, infoBoxX + 10, infoBoxY + 45);
           ctx.fillText(`Min: ${measurements.minAmplitude.toFixed(4)}`, infoBoxX + 10, infoBoxY + 65);
           ctx.fillText(`P-P: ${(measurements.maxAmplitude - measurements.minAmplitude).toFixed(4)}`, infoBoxX + 10, infoBoxY + 85);
+          ctx.fillText(`RMS: ${measurements.rms.toFixed(4)}`, infoBoxX + 10, infoBoxY + 105);
           if (measurements.period > 0) {
-            ctx.fillText(`Period: ${(measurements.period * 1000).toFixed(2)} ms`, infoBoxX + 10, infoBoxY + 105);
-            ctx.fillText(`Freq: ${measurements.frequency.toFixed(2)} Hz`, infoBoxX + 10, infoBoxY + 125);
+            ctx.fillText(`Period: ${(measurements.period * 1000).toFixed(2)} ms`, infoBoxX + 10, infoBoxY + 125);
+            ctx.fillText(`Freq: ${measurements.frequency.toFixed(2)} Hz`, infoBoxX + 10, infoBoxY + 145);
           }
           if (loadedFile) {
-            ctx.fillText(`SR: 44100 Hz`, infoBoxX + 10, infoBoxY + 145);
+            ctx.fillText(`SR: 44100 Hz`, infoBoxX + 10, infoBoxY + 165);
           }
         }
       }
@@ -1285,6 +1302,7 @@ function BasicApp() {
                 <p style={{ margin: '5px 0' }}>Max Amplitude: <strong>{measurements.maxAmplitude.toFixed(4)}</strong></p>
                 <p style={{ margin: '5px 0' }}>Min Amplitude: <strong>{measurements.minAmplitude.toFixed(4)}</strong></p>
                 <p style={{ margin: '5px 0' }}>Peak-to-Peak: <strong>{(measurements.maxAmplitude - measurements.minAmplitude).toFixed(4)}</strong></p>
+                <p style={{ margin: '5px 0' }}>RMS: <strong>{measurements.rms.toFixed(4)}</strong></p>
                 {measurements.period > 0 && (
                   <>
                     <p style={{ margin: '5px 0' }}>Period: <strong>{(measurements.period * 1000).toFixed(2)} ms</strong></p>
