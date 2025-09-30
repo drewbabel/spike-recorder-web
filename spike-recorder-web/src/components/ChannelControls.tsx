@@ -1,5 +1,5 @@
 import React from 'react';
-import { Channel } from '../types';
+import type { Channel } from '../types';
 
 interface ChannelControlsProps {
   channel: Channel;
@@ -17,12 +17,12 @@ export const ChannelControls: React.FC<ChannelControlsProps> = ({
     });
   };
 
-  const handleOffsetChange = (delta: number) => {
-    onUpdate({
-      ...channel,
-      offset: channel.offset + delta
-    });
-  };
+  // const handleOffsetChange = (delta: number) => {
+  //   onUpdate({
+  //     ...channel,
+  //     offset: channel.offset + delta
+  //   });
+  // };
 
   return (
     <div className="flex items-center space-x-2 p-2 border-b border-gray-700">

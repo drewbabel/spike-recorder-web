@@ -23,7 +23,7 @@ function BasicApp() {
   const [showIntro, setShowIntro] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
   const [canvasSize, setCanvasSize] = useState({ width: 1200, height: 600 });
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);

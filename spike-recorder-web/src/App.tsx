@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
-import {
+import type {
   Channel,
   AudioConfig,
   SerialConfig,
@@ -397,7 +397,7 @@ function App() {
       setIsPaused(true);
 
       // Load events file if exists
-      const eventsFileName = file.name.replace('.wav', '-events.txt');
+      // const eventsFileName = file.name.replace('.wav', '-events.txt');
       // Would need to implement events file loading logic here
     };
 

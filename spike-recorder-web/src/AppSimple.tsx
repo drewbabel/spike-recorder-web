@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 // import './App.css'; // Removed - causing issues
-import {
+import type {
   Channel,
   AudioConfig,
   SerialConfig,
