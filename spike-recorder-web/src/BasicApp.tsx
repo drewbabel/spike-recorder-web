@@ -39,6 +39,14 @@ function BasicApp() {
   // Enumerate audio devices
   const loadAudioDevices = async () => {
     try {
+      // Request permission first to get device labels
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop());
+      } catch (permError) {
+        console.log('User denied microphone permission');
+      }
+
       const devices = await navigator.mediaDevices.enumerateDevices();
       const audioInputs = devices.filter(device => device.kind === 'audioinput');
       setAudioDevices(audioInputs);
@@ -547,15 +555,12 @@ function BasicApp() {
     };
   }, [isPaused, audioInitialized, timeScale, showThreshold, upperThreshold, lowerThreshold, detectedSpikes, loadedFile, playbackPosition, measurements, canvasSize]);
 
-  // Load audio devices on mount
+  // Load audio devices on mount and when intro shows
   useEffect(() => {
-    loadAudioDevices();
-    // Also try to load immediately
-    navigator.mediaDevices.enumerateDevices().then(devices => {
-      const audioInputs = devices.filter(device => device.kind === 'audioinput');
-      setAudioDevices(audioInputs);
-    }).catch(console.error);
-  }, []);
+    if (showIntro) {
+      loadAudioDevices();
+    }
+  }, [showIntro]);
 
   // Handle window resize with debounce
   useEffect(() => {
@@ -733,9 +738,9 @@ function BasicApp() {
               }}
             >
               <option value="">Select microphone...</option>
-              {audioDevices.map(device => (
+              {audioDevices.map((device, index) => (
                 <option key={device.deviceId} value={device.deviceId}>
-                  {device.label || `Mic ${device.deviceId.slice(0, 8)}`}
+                  {device.label || `Audio Input ${index + 1}`}
                 </option>
               ))}
             </select>
@@ -1063,9 +1068,9 @@ function BasicApp() {
                   }}
                 >
                   <option value="">Select device...</option>
-                  {audioDevices.map(device => (
+                  {audioDevices.map((device, idx) => (
                     <option key={device.deviceId} value={device.deviceId}>
-                      {device.label || `Mic ${device.deviceId.slice(0, 8)}`}
+                      {device.label || `Audio Input ${idx + 1}`}
                     </option>
                   ))}
                 </select>
