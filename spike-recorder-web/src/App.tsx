@@ -203,6 +203,20 @@ function App() {
       const devices = await processor.getAudioDevices();
       setAvailableDevices(devices);
 
+      // Update channel names with actual device info
+      if (devices.length > 0) {
+        const selectedDevice = audioConfig.deviceId
+          ? devices.find(d => d.deviceId === audioConfig.deviceId)
+          : devices[0];
+
+        if (selectedDevice) {
+          setChannels(prev => prev.map((ch, index) => ({
+            ...ch,
+            name: `${selectedDevice.label || 'Microphone'} [${index === 0 ? 'Left' : 'Right'}]`
+          })));
+        }
+      }
+
       // Apply mute setting
       processor.mute(audioConfig.muteSpeakers);
     } catch (error) {
@@ -469,6 +483,21 @@ function App() {
         const processor = new AudioProcessor();
         await processor.initialize(config.numberOfChannels, config.deviceId);
         audioProcessorRef.current = processor;
+
+        // Get available audio devices and update channel names
+        const devices = await processor.getAudioDevices();
+        setAvailableDevices(devices);
+
+        const selectedDevice = config.deviceId
+          ? devices.find(d => d.deviceId === config.deviceId)
+          : devices[0];
+
+        if (selectedDevice) {
+          setChannels(prev => prev.map((ch, index) => ({
+            ...ch,
+            name: `${selectedDevice.label || 'Microphone'} [${index === 0 ? 'Left' : 'Right'}]`
+          })));
+        }
 
         // Set up waveform buffers for each channel
         channels.forEach(channel => {
