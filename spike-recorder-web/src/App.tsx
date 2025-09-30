@@ -148,7 +148,7 @@ function App() {
   const initializeAudio = async () => {
     try {
       const processor = new AudioProcessor();
-      await processor.initialize(audioConfig.numberOfChannels);
+      await processor.initialize(audioConfig.numberOfChannels, audioConfig.deviceId);
       audioProcessorRef.current = processor;
 
       // Set up waveform buffers for each channel
@@ -456,10 +456,71 @@ function App() {
   };
 
   // Update audio config
-  const updateAudioConfig = (config: AudioConfig) => {
+  const updateAudioConfig = async (config: AudioConfig) => {
+    const deviceChanged = config.deviceId !== audioConfig.deviceId;
     setAudioConfig(config);
+
     if (audioProcessorRef.current) {
       audioProcessorRef.current.mute(config.muteSpeakers);
+
+      // Reinitialize audio if device changed
+      if (deviceChanged) {
+        audioProcessorRef.current.disconnect();
+        const processor = new AudioProcessor();
+        await processor.initialize(config.numberOfChannels, config.deviceId);
+        audioProcessorRef.current = processor;
+
+        // Set up waveform buffers for each channel
+        channels.forEach(channel => {
+          waveformBuffersRef.current.set(
+            channel.id,
+            new WaveformBuffer(config.sampleRate)
+          );
+        });
+
+        // Set up data callback
+        processor.setDataCallback((data: Float32Array[]) => {
+          if (isPaused) return;
+
+          setChannels(prevChannels => {
+            const newChannels = [...prevChannels];
+            data.forEach((channelData, index) => {
+              if (index < newChannels.length) {
+                // Update channel data
+                newChannels[index].data = channelData;
+
+                // Add to buffer
+                const buffer = waveformBuffersRef.current.get(newChannels[index].id);
+                if (buffer) {
+                  buffer.push(channelData);
+                }
+
+                // Record if recording
+                if (recordingState.isRecording && wavEncoderRef.current) {
+                  wavEncoderRef.current.record(data);
+                }
+
+                // Detect spikes if in threshold mode
+                if (viewMode === 'threshold' && thresholdConfig.enabled) {
+                  const spikes = spikeDetectorRef.current.detect(
+                    channelData,
+                    config.sampleRate,
+                    Date.now() / 1000,
+                    newChannels[index].id
+                  );
+                  if (spikes.length > 0) {
+                    setSpikeMarkers(prev => [...prev, ...spikes.map(s => s.timestamp)]);
+                  }
+                }
+              }
+            });
+            return newChannels;
+          });
+        });
+
+        // Apply mute setting
+        processor.mute(config.muteSpeakers);
+      }
     }
   };
 

@@ -167,17 +167,25 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
           </div>
         </div>
 
-        {/* Available Audio Devices */}
+        {/* Audio Device Selection */}
         {availableDevices.length > 0 && (
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-2">Available Audio Inputs</h3>
-            <div className="text-sm text-gray-400">
+            <h3 className="text-lg font-semibold mb-2">Audio Input Device</h3>
+            <select
+              className="bg-gray-800 text-white px-3 py-2 rounded w-full"
+              value={audioConfig.deviceId || ''}
+              onChange={(e) => onUpdateAudioConfig({
+                ...audioConfig,
+                deviceId: e.target.value || undefined
+              })}
+            >
+              <option value="">Default Audio Input</option>
               {availableDevices.map((device, index) => (
-                <div key={device.deviceId || index}>
+                <option key={device.deviceId || index} value={device.deviceId}>
                   {device.label || `Audio Input ${index + 1}`}
-                </div>
+                </option>
               ))}
-            </div>
+            </select>
           </div>
         )}
       </div>

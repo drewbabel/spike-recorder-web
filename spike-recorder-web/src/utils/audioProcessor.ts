@@ -9,17 +9,23 @@ export class AudioProcessor {
   private sampleRate = 44100;
   private dataCallback: ((data: Float32Array[]) => void) | null = null;
 
-  async initialize(numberOfChannels: number = 2): Promise<void> {
+  async initialize(numberOfChannels: number = 2, deviceId?: string): Promise<void> {
     try {
       // Get user media
+      const audioConstraints: MediaTrackConstraints = {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        sampleRate: this.sampleRate,
+        channelCount: numberOfChannels
+      };
+
+      if (deviceId) {
+        audioConstraints.deviceId = { exact: deviceId };
+      }
+
       this.stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          sampleRate: this.sampleRate,
-          channelCount: numberOfChannels
-        }
+        audio: audioConstraints
       });
 
       // Create audio context

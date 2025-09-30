@@ -13,6 +13,7 @@ export type AudioConfig = {
   bufferSize: number;
   numberOfChannels: number;
   muteSpeakers: boolean;
+  deviceId?: string;
 }
 
 export type SerialConfig = {
