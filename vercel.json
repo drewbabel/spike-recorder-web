@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd spike-recorder-web && npm install && npm run build",
+  "outputDirectory": "spike-recorder-web/dist",
+  "installCommand": "cd spike-recorder-web && npm install",
+  "framework": "vite"
+}
