@@ -1,5 +1,4 @@
 import React from 'react';
-import { RecordingState } from '../types';
 
 interface ControlsBarProps {
   isPlaying: boolean;
@@ -14,7 +13,6 @@ interface ControlsBarProps {
 }
 
 export const ControlsBar: React.FC<ControlsBarProps> = ({
-  isPlaying,
   isPaused,
   isRecording,
   recordingDuration,

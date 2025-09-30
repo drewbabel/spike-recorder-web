@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Channel, AudioConfig, SerialConfig } from '../types';
+import type { Channel, AudioConfig, SerialConfig } from '../types';
 import { SerialHandler } from '../utils/serialHandler';
 
 interface ConfigModalProps {

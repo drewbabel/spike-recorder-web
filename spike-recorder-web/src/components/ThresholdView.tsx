@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { ThresholdConfig } from '../types';
+import type { ThresholdConfig } from '../types';
 
 interface ThresholdViewProps {
   config: ThresholdConfig;

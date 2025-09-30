@@ -18,7 +18,6 @@ export class WaveformBuffer {
   }
 
   getRange(startTime: number, duration: number): Float32Array {
-    const startSample = Math.floor(startTime * this.sampleRate);
     const numSamples = Math.floor(duration * this.sampleRate);
 
     const result = new Float32Array(numSamples);
@@ -32,10 +31,6 @@ export class WaveformBuffer {
   }
 
   getLatest(duration: number): Float32Array {
-    const numSamples = Math.min(
-      Math.floor(duration * this.sampleRate),
-      this.maxSize
-    );
     return this.getRange(0, duration);
   }
 

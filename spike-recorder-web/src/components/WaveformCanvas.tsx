@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { Channel, MeasurementSelection } from '../types';
+import type { Channel, MeasurementSelection } from '../types';
 
 interface WaveformCanvasProps {
   channels: Channel[];
@@ -23,7 +23,7 @@ export const WaveformCanvas: React.FC<WaveformCanvasProps> = ({
   eventMarkers = []
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number | undefined>();
+  const animationRef = useRef<number | undefined>(undefined);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionStart, setSelectionStart] = useState({ x: 0, y: 0 });
   const [selectionEnd, setSelectionEnd] = useState({ x: 0, y: 0 });

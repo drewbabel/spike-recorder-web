@@ -1,4 +1,4 @@
-import { Spike } from '../types';
+import type { Spike } from '../types';
 
 export class SpikeDetector {
   private threshold: number = 0.5;

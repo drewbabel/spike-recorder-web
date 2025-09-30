@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { SpikeAnalysisData } from '../types';
+import type { SpikeAnalysisData } from '../types';
 
 interface SpikeAnalysisViewProps {
   data: SpikeAnalysisData;

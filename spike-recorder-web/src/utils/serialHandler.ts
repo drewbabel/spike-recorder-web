@@ -25,7 +25,7 @@ export class SerialHandler {
 
       // Set up reader
       const textDecoder = new TextDecoderStream();
-      const readableStreamClosed = this.port.readable.pipeTo(textDecoder.writable);
+      this.port.readable.pipeTo(textDecoder.writable);
       this.reader = textDecoder.readable.getReader();
 
       // Start reading data
@@ -33,7 +33,7 @@ export class SerialHandler {
 
       // Set up writer
       const textEncoder = new TextEncoderStream();
-      const writableStreamClosed = textEncoder.readable.pipeTo(this.port.writable);
+      textEncoder.readable.pipeTo(this.port.writable);
       this.writer = textEncoder.writable.getWriter();
 
     } catch (error) {
@@ -43,7 +43,6 @@ export class SerialHandler {
   }
 
   private async readLoop(): Promise<void> {
-    const buffer: number[] = [];
     const channelData: Float32Array[] = Array(this.numberOfChannels)
       .fill(null)
       .map(() => new Float32Array(256));
@@ -60,9 +59,9 @@ export class SerialHandler {
         for (const line of lines) {
           if (!line.trim()) continue;
 
-          const values = line.split(',').map(v => parseFloat(v.trim()));
+          const values = line.split(',').map((v: string) => parseFloat(v.trim()));
 
-          if (values.length === this.numberOfChannels && values.every(v => !isNaN(v))) {
+          if (values.length === this.numberOfChannels && values.every((v: number) => !isNaN(v))) {
             // Store samples for each channel
             for (let ch = 0; ch < this.numberOfChannels; ch++) {
               // Convert to normalized float (-1 to 1)
