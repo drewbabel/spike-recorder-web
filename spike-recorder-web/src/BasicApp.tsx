@@ -76,6 +76,7 @@ function BasicApp() {
       sourceRef.current = audioContextRef.current.createMediaStreamSource(streamRef.current);
       analyserRef.current = audioContextRef.current.createAnalyser();
       analyserRef.current.fftSize = 2048;
+      analyserRef.current.smoothingTimeConstant = 0; // Disable time-domain smoothing/filtering
 
       sourceRef.current.connect(analyserRef.current);
 
